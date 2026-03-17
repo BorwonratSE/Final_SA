@@ -33,3 +33,18 @@ CREATE TABLE IF NOT EXISTS logs (
   meta        JSONB,
   created_at  TIMESTAMP    DEFAULT NOW()
 );
+
+-- เพิ่มข้อมูล Seed Users พร้อม Bcrypt Hash จริง
+INSERT INTO users (username, email, password_hash, role) VALUES
+  ('alice', 'alice@lab.local', '$2b$10$PjnT4Aw1VHdFD89uFMsbtOunaa8XXNtp.8aGFlC4Rf2F1zAp3V.KC', 'member'),
+  ('bob',   'bob@lab.local',   '$2b$10$RdE50VVxFllAA71b/HJuPOIY8PQKujO4zWWTb0bJ3OsaeGNXTbSbu',   'member'),
+  ('admin', 'admin@lab.local', '$2b$10$ZFSu9jujm16MjmDzk3fIYO36TyW7tNXJl3MGQuDkWBoiaiNJ2iFca', 'admin')
+ON CONFLICT (username) DO UPDATE SET
+  email = EXCLUDED.email,
+  password_hash = EXCLUDED.password_hash,
+  role = EXCLUDED.role;
+
+-- เพิ่มงานตัวอย่าง (Optional)
+INSERT INTO tasks (user_id, title, description, status, priority)
+SELECT id, 'ทำโปรเจกต์ Software Architecture', 'รันระบบ Microservices ให้สำเร็จ', 'TODO', 'high'
+FROM users WHERE username = 'alice';
