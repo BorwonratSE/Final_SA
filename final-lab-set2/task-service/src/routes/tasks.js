@@ -4,24 +4,29 @@ const requireAuth = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-// Helper: ส่ง log ไปที่ Log Service
-async function logEvent({ level, event, userId, ip, method, path, statusCode, message, meta }) {
-  try {
-    await fetch('http://log-service:3003/api/logs/internal', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        service: 'task-service',
-        level, event,
-        user_id:    userId    || null,
-        ip_address: ip        || null,
-        method, path,
-        status_code: statusCode || null,
-        message, meta
-      })
-    });
-  } catch (_) {}
+// --- ส่วนที่แก้ไขสำหรับ Set 2 (Infrastructure: Fire-and-forget) ---
+async function logActivity({ userId, username, eventType, entityId, summary, meta }) {
+  const ACTIVITY_URL = process.env.ACTIVITY_SERVICE_URL || 'http://activity-service:3003';
+  
+  // ส่งข้อมูลไป Activity Service โดยไม่รอคำตอบ (fire-and-forget)
+  fetch(`${ACTIVITY_URL}/api/activity/internal`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      user_id: userId, 
+      username, 
+      event_type: eventType,
+      entity_type: 'task', 
+      entity_id: entityId || null,
+      summary, 
+      meta: meta || null
+    })
+  }).catch(() => {
+    // ถ้า Service เพื่อนล่ม ระบบเราต้องยังทำงานได้ปกติ
+    console.warn('[task] activity-service unreachable — skipping event log');
+  });
 }
+// -----------------------------------------------------------------------
 
 // GET /api/tasks/health
 router.get('/health', (_, res) => res.json({ status: 'ok', service: 'task-service' }));
@@ -69,16 +74,11 @@ router.post('/', async (req, res) => {
 
     const task = result.rows[0];
 
-    await logEvent({
-      level: 'INFO',
-      event: 'TASK_CREATED',
-      userId: req.user.sub,
-      ip,
-      method: 'POST',
-      path: '/api/tasks',
-      statusCode: 201,
-      message: `Task created: "${title}"`,
-      meta: { task_id: task.id, title }
+    logActivity({
+      userId: req.user.sub, username: req.user.username,
+      eventType: 'TASK_CREATED', entityId: task.id,
+      summary: `${req.user.username} สร้าง task "${title}"`,
+      meta: { task_id: task.id, title, priority }
     });
 
     res.status(201).json({ task });
@@ -101,15 +101,11 @@ router.put('/:id', async (req, res) => {
     }
 
     if (check.rows[0].user_id !== req.user.sub && req.user.role !== 'admin') {
-      await logEvent({
-        level: 'WARN',
-        event: 'TASK_UPDATE_FORBIDDEN',
-        userId: req.user.sub,
-        ip,
-        method: 'PUT',
-        path: `/api/tasks/${id}`,
-        statusCode: 403,
-        message: `Forbidden update attempt on task ${id}`
+      logActivity({
+        userId: req.user.sub, username: req.user.username,
+        eventType: 'TASK_STATUS_CHANGED', entityId: parseInt(id),
+        summary: `${req.user.username} เปลี่ยนสถานะ task #${id} เป็น ${status}`,
+        meta: { task_id: parseInt(id), old_status: check.rows[0].status, new_status: status }
       });
 
       return res.status(403).json({ error: 'Forbidden' });

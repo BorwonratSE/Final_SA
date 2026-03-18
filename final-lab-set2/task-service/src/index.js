@@ -4,6 +4,25 @@ const cors    = require('cors');
 const { pool } = require('./db/db');
 const tasksRouter = require('./routes/tasks');
 
+// ฟังก์ชันส่ง Activity แบบ Fire-and-forget (Inter-service Communication)
+const logActivity = async (userId, username, action) => {
+  try {
+    const body = JSON.stringify({ userId, username, action });
+    // ยิงไปที่ Service ของเพื่อน (พอร์ต 3003) แบบไม่ต้องรอคำตอบ (Fire-and-forget)
+    fetch('http://activity-service:3003/activities', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: body
+    }).catch(err => console.log("[Activity Log Error] - อาจเป็นเพราะ Service เพื่อนยังไม่รัน"));
+  } catch (e) {
+    // ปล่อยผ่านเพื่อให้งานหลัก (Task) ยังทำงานได้ปกติแม้ Log จะพัง
+  }
+};
+
+// ส่งฟังก์ชันนี้ไปให้ไฟล์อื่นเรียกใช้ได้
+app.set('logActivity', logActivity);
+// -----------------------------------------------------------------------
+
 const app  = express();
 const PORT = process.env.PORT || 3002;
 
