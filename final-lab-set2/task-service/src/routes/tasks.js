@@ -162,15 +162,13 @@ router.delete('/:id', async (req, res) => {
     }
 
     if (check.rows[0].user_id !== req.user.sub && req.user.role !== 'admin') {
-      await logEvent({
-        level: 'WARN',
-        event: 'TASK_DELETE_FORBIDDEN',
-        userId: req.user.sub,
-        ip,
-        method: 'DELETE',
-        path: `/api/tasks/${id}`,
-        statusCode: 403,
-        message: `Forbidden delete attempt on task ${id}`
+      // ใน router.delete('/:id') หลังลบงานสำเร็จ
+      logActivity({
+        userId: req.user.sub, 
+        username: req.user.username,
+        eventType: 'TASK_DELETED', 
+        entityId: parseInt(id),
+        summary: `${req.user.username} ลบ task #${id}`
       });
 
       return res.status(403).json({ error: 'Forbidden' });
