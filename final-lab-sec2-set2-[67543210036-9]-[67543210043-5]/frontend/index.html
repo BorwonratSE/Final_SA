@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📋 Task Board — Final Lab Sec2</title>
+  <script src="config.js"></script>
+  <link rel="stylesheet" href="style.css"> </head>
+<body>
+
+  <div id="auth-page" class="auth-container">
+    <div class="auth-box">
+      <div class="auth-tabs">
+        <button onclick="switchAuth('login')" id="btn-tab-login" class="active">Login</button>
+        <button onclick="switchAuth('register')" id="btn-tab-register">Register</button>
+      </div>
+
+      <form id="login-form" onsubmit="event.preventDefault(); doLogin();">
+        <input type="email" id="login-email" placeholder="Email" required>
+        <input type="password" id="login-password" placeholder="Password" required>
+        <button type="submit">เข้าสู่ระบบ</button>
+      </form>
+
+      <form id="register-form" class="hidden" onsubmit="event.preventDefault(); doRegister();">
+        <input type="text" id="reg-username" placeholder="Username" required>
+        <input type="email" id="reg-email" placeholder="Email" required>
+        <input type="password" id="reg-password" placeholder="Password (min 6 chars)" required>
+        <button type="submit">สมัครสมาชิก</button>
+      </form>
+      <p id="auth-error" class="error-text"></p>
+    </div>
+  </div>
+
+  <div id="app-page" class="app-layout hidden">
+    <nav class="sidebar">
+      <div class="sidebar-logo">📋 Task Board</div>
+      <div class="sidebar-nav">
+        <button class="nav-item active" data-page="tasks" onclick="showPage('tasks')">
+          <span class="nav-icon">✅</span> Tasks
+        </button>
+
+        <a href="activity.html" target="_blank" class="nav-item" style="text-decoration:none">
+          <span class="nav-icon">📅</span> Activity Timeline
+        </a>
+      </div>
+      
+      <div class="sidebar-footer">
+        <div class="user-chip">
+          <div id="sidebar-name">—</div>
+          <button onclick="doLogout()">✕ Logout</button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="content">
+      <div id="page-tasks">
+        <div class="page-header">
+          <h1>My Tasks</h1>
+          <button onclick="openTaskModal()">+ New Task</button>
+        </div>
+        <div id="task-list" class="task-grid">
+          </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const AUTH = window.APP_CONFIG.AUTH_URL;
+    const TASK = window.APP_CONFIG.TASK_URL;
+    let token = localStorage.getItem('jwt_token');
+    let currentUser = null;
+
+    function authHeaders() {
+      return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+    }
+
+    // --- Auth Functions ---
+    async function doLogin() {
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+      try {
+        const res = await fetch(`${AUTH}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          token = data.token;
+          localStorage.setItem('jwt_token', token);
+          initApp(data.user);
+        } else {
+          document.getElementById('auth-error').textContent = data.error;
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    async function doRegister() {
+      const username = document.getElementById('reg-username').value;
+      const email = document.getElementById('reg-email').value;
+      const password = document.getElementById('reg-password').value;
+      try {
+        const res = await fetch(`${AUTH}/api/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, email, password })
+        });
+        if (res.ok) {
+          alert('สมัครสมาชิกสำเร็จ! กรุณา Login');
+          switchAuth('login');
+        } else {
+          const data = await res.json();
+          document.getElementById('auth-error').textContent = data.error;
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    function initApp(user) {
+      currentUser = user;
+      document.getElementById('auth-page').classList.add('hidden');
+      document.getElementById('app-page').classList.remove('hidden');
+      document.getElementById('sidebar-name').textContent = user.username;
+      loadTasks(); // โหลดงานเริ่มต้น
+    }
+
+    async function loadTasks() {
+      const res = await fetch(`${TASK}/api/tasks`, { headers: authHeaders() });
+      if (res.ok) {
+        const tasks = await res.json();
+        renderTasks(tasks);
+      }
+    }
+
+    function renderTasks(tasks) {
+      const container = document.getElementById('task-list');
+      container.innerHTML = tasks.map(t => `
+        <div class="task-card">
+          <h3>${t.title}</h3>
+          <p>${t.description || ''}</p>
+          <div class="task-meta">
+            <span class="badge-${t.priority}">${t.priority}</span>
+            <span class="status">${t.status}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function switchAuth(type) {
+      document.getElementById('login-form').classList.toggle('hidden', type !== 'login');
+      document.getElementById('register-form').classList.toggle('hidden', type !== 'register');
+      document.getElementById('btn-tab-login').classList.toggle('active', type === 'login');
+      document.getElementById('btn-tab-register').classList.toggle('active', type === 'register');
+    }
+
+    function doLogout() {
+      localStorage.removeItem('jwt_token');
+      location.reload();
+    }
+  </script>
+</body>
+</html>
