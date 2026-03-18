@@ -1,0 +1,7 @@
+const { Pool } = require('pg');
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || 'postgres://admin:secret123@task-db:5432/taskdb'
+});
+
+module.exports = pool;
