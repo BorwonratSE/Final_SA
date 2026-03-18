@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔐 Task Board — Final Lab Set 1</title>
+  <style>
+    /* ═══════════════════════════════════════════════════════
+       GLOBAL RESET & DARK THEME (จากไฟล์เทพ Week 12)
+    ═══════════════════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:       #0f172a;
+      --surface:  #1e293b;
+      --surface2: #273448;
+      --border:   #334155;
+      --text:     #e2e8f0;
+      --muted:    #94a3b8;
+      --blue:     #3b82f6;
+      --blue2:    #2563eb;
+      --green:    #22c55e;
+      --yellow:   #f59e0b;
+      --red:      #ef4444;
+      --purple:   #a855f7;
+      --radius:   10px;
+    }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh; line-height: 1.5;
+    }
+    .hidden { display: none !important; }
+    button { cursor: pointer; transition: all .15s; border: none; }
+
+    /* AUTH PAGE STYLE */
+    #auth-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 1.5rem; }
+    .auth-box {
+      background: var(--surface); border-radius: 16px; padding: 2.5rem; width: 100%; max-width: 420px;
+      border: 1px solid var(--border); box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    }
+    .auth-logo { font-size: 2.5rem; text-align: center; margin-bottom: .5rem; }
+    .auth-title { text-align: center; font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; color: var(--muted); font-size: .85rem; margin-bottom: .4rem; }
+    .form-group input {
+      width: 100%; padding: .75rem 1rem; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 1rem;
+    }
+    .btn-primary {
+      width: 100%; padding: .85rem; background: var(--blue); color: white;
+      border-radius: 8px; font-size: 1rem; font-weight: 600; margin-top: .5rem;
+    }
+    .btn-primary:hover { background: var(--blue2); transform: translateY(-1px); }
+
+    /* MAIN APP LAYOUT STYLE */
+    #app-page { display: flex; height: 100vh; }
+    .sidebar { width: 240px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+    .sidebar-logo { padding: 1.5rem; font-size: 1.1rem; font-weight: 700; border-bottom: 1px solid var(--border); }
+    .sidebar-nav { flex: 1; padding: .75rem; }
+    .nav-item {
+      display: flex; align-items: center; gap: .75rem; padding: .65rem 1rem; border-radius: 8px;
+      color: var(--muted); font-size: .9rem; background: none; width: 100%; text-align: left;
+    }
+    .nav-item:hover, .nav-item.active { background: var(--surface2); color: var(--blue); }
+    .main-content { flex: 1; overflow-y: auto; display: flex; flex-direction: column; background: var(--bg); }
+    
+    /* USER CHIP STYLE */
+    .sidebar-footer { padding: 1rem; border-top: 1px solid var(--border); }
+    .user-chip { display: flex; align-items: center; gap: .75rem; padding: .65rem; background: var(--bg); border-radius: 8px; }
+    .user-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--blue); display: flex; align-items: center; justify-content: center; font-weight: 700; }
+    .role-badge { font-size: .7rem; color: white; padding: 1px 6px; border-radius: 4px; text-transform: uppercase; }
+    .role-admin { background: var(--purple); } .role-member { background: var(--blue); }
+
+    /* JWT INSPECTOR (จากไฟล์เทพ) */
+    .jwt-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-top: 1rem; }
+    .jwt-part { padding: 4px 8px; border-radius: 5px; font-family: monospace; font-size: .75rem; word-break: break-all; }
+    .jwt-header-part { background: rgba(239,68,68,.2); color: #fca5a5; }
+    .jwt-payload-part { background: rgba(168,85,247,.2); color: #c4b5fd; }
+    .jwt-sig-part { background: rgba(59,130,246,.2); color: #93c5fd; }
+  </style>
+</head>
+<body>
+
+<div id="auth-page">
+  <div class="auth-box">
+    <div class="auth-logo">🔐</div>
+    <div class="auth-title">Task Board — Final Lab</div>
+
+    <div id="login-form">
+      <div class="form-group">
+        <label>Email</label>
+        <input id="login-email" type="email" value="alice@lab.local">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input id="login-password" type="password" value="alice123">
+      </div>
+      <button class="btn-primary" onclick="doLogin()">เข้าสู่ระบบ</button>
+    </div>
+
+    <div id="auth-msg" class="auth-msg"></div>
+
+    <div style="margin-top:1.5rem;padding:1rem;background:var(--bg);border-radius:8px;font-size:.82rem;border:1px solid var(--border);color:var(--muted)">
+      <strong>🔑 Seed Users:</strong><br>
+      alice@lab.local / alice123 (member)<br>
+      bob@lab.local / bob456 (member)<br>
+      admin@lab.local / adminpass (admin)
+    </div>
+  </div>
+</div>
+
+<div id="app-page" class="hidden">
+  <nav class="sidebar">
+    <div class="sidebar-logo">📋 Task Board</div>
+    <div class="sidebar-nav">
+      <button class="nav-item active" data-page="tasks" onclick="showPage('tasks')">
+        <span class="nav-icon">✅</span> Tasks
+      </button>
+      <button class="nav-item" data-page="profile" onclick="showPage('profile')">
+        <span class="nav-icon">👤</span> Profile & JWT
+      </button>
+      <a href="logs.html" target="_blank" class="nav-item" style="text-decoration:none">
+        <span class="nav-icon">📊</span> Log Dashboard
+        <span style="margin-left:auto;font-size:.7rem;color:var(--muted)">↗</span>
+      </a>
+    </div>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <div class="user-avatar" id="sidebar-avatar">?</div>
+        <div style="flex:1; min-width:0;">
+          <div id="sidebar-name" style="font-size:.85rem; font-weight:600; overflow:hidden; text-overflow:ellipsis;">—</div>
+          <span class="role-badge" id="sidebar-role-badge">—</span>
+        </div>
+        <button onclick="doLogout()" style="background:none; color:var(--muted); font-size:1.2rem;">✕</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="main-content">
+    <div id="page-tasks" style="padding: 2rem;">
+        <h2 style="margin-bottom:1rem;">✅ รายการงานของคุณ</h2>
+        <div id="task-list-container">
+            <p style="color:var(--muted)">กำลังโหลดข้อมูล...</p>
+        </div>
+    </div>
+    
+    <div id="page-profile" class="hidden" style="padding: 2rem;">
+        <h2 style="margin-bottom:1rem;">👤 โปรไฟล์และ JWT</h2>
+        <div class="jwt-panel">
+            <h3 style="font-size:.9rem; color:var(--muted); margin-bottom:1rem;">🔍 JWT Token Inspector</h3>
+            <div id="jwt-parts-display" style="display:flex; flex-direction:column; gap:0.5rem;">
+                </div>
+        </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = ''; 
+let token = localStorage.getItem('jwt_token');
+let currentUser = null;
+
+async function doLogin() {
+  const email    = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  if (!email || !password) { showAuthMsg('กรุณากรอกข้อมูลให้ครบ','error'); return; }
+
+  try {
+    const res  = await fetch(`${API}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+
+    if (res.ok) {
+      token = data.token;
+      localStorage.setItem('jwt_token', token);
+      initApp(data.user);
+    } else {
+      showAuthMsg('❌ ' + (data.error || 'Login ล้มเหลว'), 'error');
+    }
+  } catch (err) {
+    showAuthMsg('❌ ไม่สามารถเชื่อมต่อระบบได้', 'error');
+  }
+}
+
+function showAuthMsg(msg, type) {
+  const el = document.getElementById('auth-msg');
+  if(!el) return;
+  el.className = `auth-msg ${type}`;
+  el.style.padding = "0.75rem";
+  el.style.marginTop = "1rem";
+  el.style.borderRadius = "8px";
+  el.style.fontSize = "0.9rem";
+  el.style.textAlign = "center";
+  el.style.background = type === 'error' ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)';
+  el.style.color = type === 'error' ? 'var(--red)' : 'var(--green)';
+  el.textContent = msg;
+}
+
+function doLogout() {
+  localStorage.removeItem('jwt_token');
+  token = null; currentUser = null;
+  location.reload();
+}
+
+function initApp(user) {
+  currentUser = user;
+  document.getElementById('auth-page').classList.add('hidden');
+  document.getElementById('app-page').classList.remove('hidden');
+  document.getElementById('sidebar-avatar').textContent = (user.username||'?').charAt(0).toUpperCase();
+  document.getElementById('sidebar-name').textContent   = user.username || user.email;
+  const rb = document.getElementById('sidebar-role-badge');
+  rb.textContent = user.role;
+  rb.className   = `role-badge role-${user.role}`;
+  showPage('tasks');
+}
+
+function showPage(page) {
+  ['tasks','profile'].forEach(p => {
+    document.getElementById(`page-${p}`).classList.toggle('hidden', p !== page);
+    const btn = document.querySelector(`[data-page="${p}"]`);
+    if (btn) btn.classList.toggle('active', p === page);
+  });
+  if (page === 'tasks')   loadTasks();
+  if (page === 'profile') renderJwtInspector();
+}
+
+async function loadTasks() {
+    const container = document.getElementById('task-list-container');
+    try {
+        const res = await fetch(`${API}/api/tasks/`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if(res.ok) {
+            const tasks = data.tasks || [];
+            if(tasks.length === 0) {
+                container.innerHTML = '<p style="color:var(--muted)">ไม่มีรายการงาน</p>';
+                return;
+            }
+            container.innerHTML = tasks.map(t => `
+                <div style="background:var(--surface); border:1px solid var(--border); padding:1rem; border-radius:8px; margin-bottom:0.75rem; border-left:4px solid ${t.status === 'DONE' ? 'var(--green)' : 'var(--yellow)'}">
+                    <div style="font-weight:600;">${escHtml(t.title)}</div>
+                    <div style="font-size:0.85rem; color:var(--muted); margin-top:0.25rem;">${escHtml(t.description || 'ไม่มีรายละเอียด')}</div>
+                    <div style="margin-top:0.5rem; display:flex; gap:0.5rem;">
+                        <span style="font-size:0.7rem; background:var(--bg); padding:2px 6px; border-radius:4px;">${t.status}</span>
+                        <span style="font-size:0.7rem; background:var(--bg); padding:2px 6px; border-radius:4px;">${t.priority}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+    } catch (e) {
+        container.innerHTML = '<p style="color:var(--red)">โหลดข้อมูลผิดพลาด</p>';
+    }
+}
+
+function renderJwtInspector() {
+  if (!token) return;
+  const parts = token.split('.');
+  if (parts.length !== 3) return;
+  const display = document.getElementById('jwt-parts-display');
+  display.innerHTML = `
+    <div class="jwt-part jwt-header-part">${parts[0]}</div>
+    <div class="jwt-part jwt-payload-part">${parts[1]}</div>
+    <div class="jwt-part jwt-sig-part">${parts[2]}</div>
+    <div style="margin-top:1rem; font-size:0.8rem; background:var(--bg); padding:1rem; border-radius:8px;">
+        <pre style="color:var(--purple);">${JSON.stringify(JSON.parse(atob(parts[1])), null, 2)}</pre>
+    </div>
+  `;
+}
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+if (token) {
+  (async () => {
+    try {
+        const res  = await fetch(`${API}/api/auth/verify`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.valid) initApp(data.user);
+        else { localStorage.removeItem('jwt_token'); token = null; }
+    } catch(e) { localStorage.removeItem('jwt_token'); token = null; }
+  })();
+}
+</script>
+</body>
+</html>
