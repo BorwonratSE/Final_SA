@@ -1,3 +1,4 @@
+const { generateToken } = require('../middleware/jwtUtils');
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
@@ -56,7 +57,7 @@ router.post('/login', async (req, res) => {
     const match = await bcrypt.compare(password, user.password_hash);
     if (!match) return res.status(401).json({ error: 'Invalid' });
 
-    const token = jwt.sign({ sub: user.id, username: user.username, email: user.email, role: user.role }, JWT_SECRET);
+    const token = generateToken({ sub: user.id, username: user.username, email: user.email, role: user.role });
     
     logActivity({ userId: user.id, username: user.username, eventType: 'USER_LOGIN', entityType: 'user', entityId: user.id, summary: `${user.username} เข้าสู่ระบบ` });
     res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
