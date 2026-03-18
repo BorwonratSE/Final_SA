@@ -4,28 +4,26 @@ const cors    = require('cors');
 const { pool } = require('./db/db');
 const tasksRouter = require('./routes/tasks');
 
-// ฟังก์ชันส่ง Activity แบบ Fire-and-forget (Inter-service Communication)
+// 1. ต้องสร้าง app ก่อนบรรทัดอื่นๆ!
+const app  = express(); 
+const PORT = process.env.PORT || 3002;
+
+// 2. ฟังก์ชัน logActivity วางตรงนี้
 const logActivity = async (userId, username, action) => {
   try {
     const body = JSON.stringify({ userId, username, action });
-    // ยิงไปที่ Service ของเพื่อน (พอร์ต 3003) แบบไม่ต้องรอคำตอบ (Fire-and-forget)
-    fetch('http://activity-service:3003/activities', {
+    fetch('http://activity-service:3003/api/activity/internal', { // แก้ URL ให้ตรงตาม API ที่เราสร้าง
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: body
-    }).catch(err => console.log("[Activity Log Error] - อาจเป็นเพราะ Service เพื่อนยังไม่รัน"));
-  } catch (e) {
-    // ปล่อยผ่านเพื่อให้งานหลัก (Task) ยังทำงานได้ปกติแม้ Log จะพัง
-  }
+    }).catch(err => console.log("[Activity Log Error]"));
+  } catch (e) {}
 };
 
-// ส่งฟังก์ชันนี้ไปให้ไฟล์อื่นเรียกใช้ได้
-app.set('logActivity', logActivity);
-// -----------------------------------------------------------------------
+// 3. เรียกใช้ app.set หลังจากที่มีการประกาศ const app ไปแล้ว
+app.set('logActivity', logActivity); 
 
-const app  = express();
-const PORT = process.env.PORT || 3002;
-
+// ส่วนที่เหลือเหมือนเดิมครับ
 app.use(cors());
 app.use(express.json());
 app.use('/api/tasks', tasksRouter);

@@ -89,6 +89,12 @@ services:
     depends_on:
       activity-db: { condition: service_healthy }
 
+  frontend:
+    build: ./frontend
+    ports:
+      - "5000:80" # หรือพอร์ตที่โปรเจกต์คุณบาสใช้ปกติ
+    restart: unless-stopped
+    
 volumes:
   auth_data:
   task_data:
